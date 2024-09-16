@@ -1,93 +1,146 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <chrono>
+#include <thread>
 
-// Enum for order statuses
+// Status Pesanan
 enum class OrderStatus {
-    NotYetTaken,
-    InKitchen,
-    Served
+    NotTaken,  // Pesanan belum diambil
+    InKitchen, // Pesanan sedang diproses di dapur
+    Served     // Pesanan telah disajikan
 };
 
-// Class representing an Order
+// Kelas Order
 class Order {
 public:
-    Order(int id, OrderStatus status)
-        : id(id), status(status) {}
+    Order() : status(OrderStatus::NotTaken) {}
 
-    int getId() const { return id; }
-    OrderStatus getStatus() const { return status; }
-    void setStatus(OrderStatus newStatus) { status = newStatus; }
+    void setStatus(OrderStatus newStatus) {
+        status = newStatus;
+    }
 
-    std::string statusToString() const {
-        switch (status) {
-            case OrderStatus::NotYetTaken: return "Not Yet Taken";
-            case OrderStatus::InKitchen: return "In Kitchen";
-            case OrderStatus::Served: return "Served";
-            default: return "Unknown Status";
-        }
+    OrderStatus getStatus() const {
+        return status;
+    }
+
+    std::string getItem() const {
+        return "Makanan";
     }
 
 private:
-    int id;
     OrderStatus status;
 };
 
-// Class representing a Table
-class Table {
+// Kelas CustomerEmotion
+class CustomerEmotion {
 public:
-    Table(int number) : number(number) {}
+    CustomerEmotion() : emotionValue(5) {}
 
-    void addOrder(const Order& order) {
-        orders.push_back(order);
-    }
+    void updateEmotion() {
+        // Berkurang setiap detik
+        auto now = std::chrono::steady_clock::now();
+        std::chrono::duration<double> elapsed = now - lastUpdateTime;
 
-    void updateOrderStatus(int orderId, OrderStatus newStatus) {
-        for (auto& order : orders) {
-            if (order.getId() == orderId) {
-                order.setStatus(newStatus);
-                break;
+        if (elapsed.count() >= 1.0) { // Setiap detik
+            if (emotionValue > 1) {
+                emotionValue--;
             }
+            lastUpdateTime = now;
         }
     }
 
-    void displayOrders() const {
-        std::cout << "Table " << number << " Orders:\n";
-        for (const auto& order : orders) {
-            std::cout << "Order ID: " << order.getId()
-                      << " - Status: " << order.statusToString() << '\n';
-        }
+    void setEmotionToMax() {
+        emotionValue = 5;
+    }
+
+    int getEmotionValue() const {
+        return emotionValue;
     }
 
 private:
-    int number;
-    std::vector<Order> orders;
+    int emotionValue;
+    std::chrono::steady_clock::time_point lastUpdateTime = std::chrono::steady_clock::now();
 };
 
-// Main function for demonstration
+// Kelas Table
+class Table {
+public:
+    Table(int number, OrderStatus initialStatus) : tableNumber(number) {
+        order.setStatus(initialStatus);
+    }
+
+    void setOrderStatus(OrderStatus status) {
+        order.setStatus(status);
+        notifyWaiter();
+    }
+
+    void updateCustomerEmotion() {
+        emotion.updateEmotion();
+    }
+
+    void serveOrder() {
+        if (order.getStatus() == OrderStatus::Served) {
+            emotion.setEmotionToMax();
+            std::cout << "Pesanan telah diantarkan ke meja " << tableNumber << ". Emosi pelanggan diatur ke 5." << std::endl;
+        }
+    }
+
+    void displayStatus() const {
+        std::cout << "Meja: " << tableNumber << std::endl;
+        std::cout << "Emosi Pelanggan: " << emotion.getEmotionValue() << std::endl;
+        std::cout << "Pesanan: " << order.getItem()
+                  << " - Status: " << orderStatusToString(order.getStatus()) << std::endl;
+        std::cout << std::endl;
+    }
+
+private:
+    void notifyWaiter() const {
+        if (order.getStatus() == OrderStatus::InKitchen) {
+            std::cout << "Notifikasi: Pesanan di meja " << tableNumber << " siap untuk diantar." << std::endl;
+        }
+    }
+
+    std::string orderStatusToString(OrderStatus status) const {
+        switch (status) {
+            case OrderStatus::NotTaken: return "Belum Diambil";
+            case OrderStatus::InKitchen: return "Di Dapur";
+            case OrderStatus::Served: return "Telah Disajikan";
+            default: return "Tidak Diketahui";
+        }
+    }
+
+    Order order;
+    CustomerEmotion emotion;
+    int tableNumber;
+};
+
+// Fungsi Utama
 int main() {
-    // Create some tables
-    Table table1(1);
-    Table table2(2);
+    // Membuat 4 meja dengan status pesanan yang berbeda
+    std::vector<Table> tables = {
+        Table(1, OrderStatus::NotTaken),
+        Table(2, OrderStatus::InKitchen),
+        Table(3, OrderStatus::Served),
+        Table(4, OrderStatus::NotTaken)
+    };
 
-    // Add orders to table 1
-    table1.addOrder(Order(101, OrderStatus::NotYetTaken));
-    table1.addOrder(Order(102, OrderStatus::InKitchen));
+    // Menampilkan status awal
+    for (auto& table : tables) {
+        table.displayStatus();
+    }
 
-    // Add orders to table 2
-    table2.addOrder(Order(201, OrderStatus::Served));
-    table2.addOrder(Order(202, OrderStatus::NotYetTaken));
+    // Simulasi proses waktu
+    for (int i = 0; i < 60; ++i) {  // Simulasi selama 60 detik
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        for (auto& table : tables) {
+            table.updateCustomerEmotion();
+            if (i == 10) table.setOrderStatus(OrderStatus::InKitchen); // Mengubah status pesanan
+            if (i == 20) table.setOrderStatus(OrderStatus::Served); // Mengubah status pesanan
+            table.serveOrder(); // Mengatur emosi pelanggan jika pesanan diantarkan
+            table.displayStatus();
+        }
+    }
 
-    // Display orders
-    table1.displayOrders();
-    table2.displayOrders();
-
-    // Update order status
-    table1.updateOrderStatus(101, OrderStatus::InKitchen);
-
-    // Display updated orders
-    std::cout << "\nAfter updating order status:\n";
-    table1.displayOrders();
-
-    return 0;
+    return 0;
 }
