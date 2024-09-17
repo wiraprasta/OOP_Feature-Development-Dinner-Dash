@@ -1,6 +1,6 @@
 Nama Anggota Kelompok :
 1. Rafael Dwiyanson Simarmata (5223600065)
-2. Wira Yuda Prastha
+2. Wira Yuda Prastha (5223600067)
    
 **Description**
 This Github contains several code for core features development on Dinner Dash style game. 
